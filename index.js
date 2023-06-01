@@ -22,12 +22,13 @@ io.on("connection", (socket) => {
       if (rooms[room].length == 2) {
         return socket.emit("notAuthorization", "not");
       } else {
-        rooms[room] = [...rooms[room], socket.id];
+        rooms[room] = [...rooms[room], { socketID: socket.id, turn: "o" }];
+        socket.emit("turnSelected", "o");
       }
     } else {
-      rooms[room] = [socket.id];
+      rooms[room] = [{ socketID: socket.id, turn: "x" }];
+      socket.emit("turnSelected", "x");
     }
-
     socket.to(room).emit("startGame", room);
   });
 
@@ -37,18 +38,27 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("playGame", ({ room }) => {
-    socket.broadcast.to(room).emit("updateGame", "Hola");
-  });
+  socket.on("playGame", ({ room }) =>
+    socket.broadcast.to(room).emit("updateGame", "Hola")
+  );
 
-  socket.on("gameBoard", (inx, idRoom) => {
-    socket.broadcast.to(idRoom).emit("gameEnemy", inx);
+  socket.on("gameBoard", (idRoom, newSquares) => {
+    console.log(rooms[idRoom]);
+    socket.broadcast
+      .to(idRoom)
+      .emit(
+        "gameEnemy",
+        rooms[idRoom][0].socketID == socket.id ? "o" : "x",
+        newSquares
+      );
   });
 
   socket.on("disconnect", () => {
     Object.keys(rooms).forEach((room) => {
       if (rooms[room].length == 2) {
-        const verifyInx = rooms[room].findIndex((id) => id == socket.id);
+        const verifyInx = rooms[room].findIndex(
+          (id) => id.socketID == socket.id
+        );
 
         console.log(verifyInx);
         if (verifyInx != -1) {
